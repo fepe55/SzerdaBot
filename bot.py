@@ -23,12 +23,13 @@ logger = logging.getLogger(__name__)
 API_TOKEN = os.getenv('API_TOKEN')
 
 ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', ]
-FILE_PATH = 'resultados.json'
+# FILE_PATH = 'resultados.json'
 
 
-def get_resultados():
-    if os.path.isfile(FILE_PATH):
-        with open(FILE_PATH, 'r') as f:
+def get_resultados(chat_id):
+    file_path = 'resultados-{}.json'.format(chat_id)
+    if os.path.isfile(file_path):
+        with open(file_path, 'r') as f:
             resultados = json.load(f)
     else:
         resultados = []
@@ -36,8 +37,9 @@ def get_resultados():
     return resultados
 
 
-def save_resultados(resultados):
-    with open(FILE_PATH, 'w') as f:
+def save_resultados(resultados, chat_id):
+    file_path = 'resultados-{}.json'.format(chat_id)
+    with open(file_path, 'w') as f:
         f.write(json.dumps(resultados))
 
 
@@ -50,7 +52,7 @@ def _sumar_punto(resultado, username):
 
 
 def print_resultados(bot, update):
-    resultados = get_resultados()
+    resultados = get_resultados(update.effective_chat.id)
     message = ''
     for resultado in resultados:
         # update.message.reply_text(resultado['dia'])
@@ -84,7 +86,7 @@ def check_sticker_set(bot, update):
     if not es_miercoles:
         return
 
-    resultados = get_resultados()
+    resultados = get_resultados(update.effective_chat.id)
     if resultados and resultados[-1]['dia'] == hoy:
         resultados_de_hoy = resultados.pop()
     else:
@@ -95,8 +97,8 @@ def check_sticker_set(bot, update):
     if sticker_set not in ALLOWED_STICKER_SETS:
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.append(resultados_de_hoy)
-        save_resultados(resultados)
-        print_resultados(bot, update)
+        save_resultados(resultados, update.effective_chat.id)
+        # print_resultados(bot, update)
     # else:
     #     update.message.reply_text('You are safe... for now')
 
