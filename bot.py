@@ -65,6 +65,8 @@ def print_resultados(bot, update):
     # Message as a reply
     # update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
     # Message as a standalone message
+    if not message:
+        message = 'Aún no hay posiciones'
     bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
