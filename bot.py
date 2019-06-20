@@ -1,6 +1,7 @@
 import os
 import pytz
 import json
+import locale
 import logging
 from datetime import datetime
 from collections import OrderedDict
@@ -11,6 +12,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram.parsemode import ParseMode
 
 load_dotenv()
+locale.setlocale(locale.LC_ALL, 'es_AR.UTF-8')
 
 # Enable logging
 logging.basicConfig(
@@ -24,6 +26,12 @@ API_TOKEN = os.getenv('API_TOKEN')
 
 ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', ]
 # FILE_PATH = 'resultados.json'
+
+
+def _get_now():
+    tz = pytz.timezone('America/Argentina/Buenos_Aires')
+    now = datetime.now(tz)
+    return now
 
 
 def get_resultados(chat_id):
@@ -49,6 +57,12 @@ def _sumar_punto(resultado, username):
     else:
         resultado['posiciones'][username] = 1
     return resultado
+
+
+def get_time(bot, update):
+    now = _get_now()
+    message = now.strftime('%A %d/%m/%Y %H:%M:%S')
+    bot.send_message(update.message.chat_id, message)
 
 
 def print_resultados(bot, update):
@@ -79,8 +93,7 @@ def check_sticker_set(bot, update):
     if user.is_bot:
         return
 
-    tz = pytz.timezone('America/Argentina/Buenos_Aires')
-    now = datetime.now(tz)
+    now = _get_now()
     es_miercoles = now.weekday() == 2
     hoy = now.date().strftime('%d/%m/%Y')
     if not es_miercoles:
@@ -120,6 +133,7 @@ def main():
 
     dp.add_handler(MessageHandler(Filters.sticker, check_sticker_set))
     dp.add_handler(CommandHandler('posiciones', print_resultados))
+    dp.add_handler(CommandHandler('time', get_time))
 
     # log all errors
     dp.add_error_handler(error)
