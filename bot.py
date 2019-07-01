@@ -69,10 +69,10 @@ def _update_resultados(chat_id):
     resultados = get_resultados(chat_id)
     now = _get_now()
     es_miercoles = now.weekday() == 2
-    hoy = now.date().strftime(DATE_FORMAT)
+    hoy_str = now.date().strftime(DATE_FORMAT)
     if not resultados:
         if es_miercoles:
-            resultados_de_hoy = {'dia': hoy, 'posiciones': {}}
+            resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
             resultados.insert(0, resultados_de_hoy)
     else:
         ultimo_resultados = resultados[0]
@@ -135,15 +135,15 @@ def check_sticker_set(bot, update):
 
     now = _get_now()
     es_miercoles = now.weekday() == 2
-    hoy = now.date().strftime(DATE_FORMAT)
+    hoy_str = now.date().strftime(DATE_FORMAT)
     if not es_miercoles:
         return
 
     resultados = get_resultados(update.effective_chat.id)
-    if resultados and resultados[-1]['dia'] == hoy:
+    if resultados and resultados[-1]['dia'] == hoy_str:
         resultados_de_hoy = resultados.pop()
     else:
-        resultados_de_hoy = {'dia': hoy, 'posiciones': {}}
+        resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
 
     sticker_set = update.message.sticker.set_name
 
