@@ -8,6 +8,7 @@ from collections import OrderedDict
 
 from dotenv import load_dotenv
 
+from telegram import Sticker
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram.parsemode import ParseMode
 
@@ -37,6 +38,19 @@ API_TOKEN = os.getenv('API_TOKEN')
 
 ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', ]
 # FILE_PATH = 'resultados.json'
+
+
+def _easter_egg(bot, update):
+    PUG_RECEIVED = 'CAADAgADeQMAAu7EoQobkLnjCnMGDQI'
+
+    # PUG_TO_SEND
+    file_id = 'CAADAgADBAEAAvR7GQABgBHkQCvGnPsC'
+    width = 440
+    height = 512
+    STICKER_TO_SEND = Sticker(file_id=file_id, height=height, width=width)
+
+    if update.message.sticker.file_id == PUG_RECEIVED:
+        bot.send_sticker(update.message.chat_id, STICKER_TO_SEND)
 
 
 def _get_now():
@@ -133,6 +147,7 @@ def check_sticker_set(bot, update):
     if user.is_bot:
         return
 
+    _easter_egg(bot, update)
     now = _get_now()
     es_miercoles = now.weekday() == 2
     hoy_str = now.date().strftime(DATE_FORMAT)
