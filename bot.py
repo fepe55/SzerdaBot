@@ -115,7 +115,65 @@ def get_time(bot, update):
     bot.send_message(update.message.chat_id, message)
 
 
-def print_resultados(bot, update):
+def get_posiciones_generales(bot, update):
+    '''
+    Get posiciones generales. Days won. Total stickers sent
+    users format: {
+      'juancito': {'stickers_sent': 99, 'days_lost': 2},
+      'pedrito': {'stickers_sent': 9, 'days_lost': 4},
+    }
+    '''
+    _update_resultados(update.message.chat_id)
+    resultados = get_resultados(update.effective_chat.id)
+    users = {}
+    for dia in resultados:
+        posiciones = dia['posiciones']
+        for user, stickers_sent in posiciones.items():
+            if user in users.keys():
+                users[user]['stickers_sent'] += stickers_sent
+            else:
+                users[user] = {
+                    'stickers_sent': stickers_sent,
+                    'days_lost': 0
+                }
+
+        # Empty day
+        if not posiciones:
+            continue
+        # Only one user sent the wrong stickers
+        if len(posiciones) == 1:
+            user, stickers_sent = list(posiciones.items())[0]
+            users[user]['days_lost'] += 1
+        # More than one user
+        else:
+            posiciones_sorted = sorted(
+                posiciones.items(), key=lambda x: x[1], reverse=True
+            )
+            first, f_stickers_sent = posiciones_sorted[0]
+            second, s_stickers_sent = posiciones_sorted[1]
+            # If the first and second one have the same number of stickers
+            # sent, then it's a draw. No loser
+            if f_stickers_sent > s_stickers_sent:
+                users[first]['days_lost'] += 1
+
+    message = ''
+    users = OrderedDict(
+        sorted(
+            users.items(), reverse=True,
+            key=lambda x: (x[1]['days_lost'], x[1]['stickers_sent'])
+        )
+    )
+    for user, data in users.items():
+        message += '{} - {} ({})\n'.format(
+            user, data['days_lost'], data['stickers_sent']
+        )
+    bot.send_message(
+        update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
+    )
+
+
+def get_posiciones(bot, update):
+    ''' Get posiciones by day '''
     _update_resultados(update.message.chat_id)
     resultados = get_resultados(update.effective_chat.id)
     message = ''
@@ -166,7 +224,7 @@ def check_sticker_set(bot, update):
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id)
-        # print_resultados(bot, update)
+        # get_posiciones(bot, update)
     # else:
     #     update.message.reply_text('You are safe... for now')
 
@@ -187,7 +245,10 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(MessageHandler(Filters.sticker, check_sticker_set))
-    dp.add_handler(CommandHandler('posiciones', print_resultados))
+    dp.add_handler(CommandHandler('posiciones', get_posiciones))
+    dp.add_handler(CommandHandler(
+        'posiciones_generales', get_posiciones_generales
+    ))
     dp.add_handler(CommandHandler('time', get_time))
 
     # log all errors
