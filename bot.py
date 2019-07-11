@@ -35,6 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 API_TOKEN = os.getenv('API_TOKEN')
+DEBUG = os.getenv('SZERDA_DEBUG', False)
 
 ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', ]
 # FILE_PATH = 'resultados.json'
@@ -57,6 +58,11 @@ def _get_now():
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
     now = datetime.now(tz)
     return now
+
+
+def _es_miercoles():
+    now = _get_now()
+    return DEBUG or now.weekday() == 2
 
 
 def get_resultados(chat_id):
@@ -82,10 +88,9 @@ def _update_resultados(chat_id):
     """
     resultados = get_resultados(chat_id)
     now = _get_now()
-    es_miercoles = now.weekday() == 2
     hoy_str = now.date().strftime(DATE_FORMAT)
     if not resultados:
-        if es_miercoles:
+        if _es_miercoles():
             resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
             resultados.insert(0, resultados_de_hoy)
     else:
@@ -206,15 +211,20 @@ def check_sticker_set(bot, update):
         return
 
     _easter_egg(bot, update)
-    now = _get_now()
-    es_miercoles = now.weekday() == 2
-    hoy_str = now.date().strftime(DATE_FORMAT)
-    if not es_miercoles:
+    if not _es_miercoles():
         return
 
+    now = _get_now()
+    hoy_str = now.date().strftime(DATE_FORMAT)
     resultados = get_resultados(update.effective_chat.id)
-    if resultados and resultados[-1]['dia'] == hoy_str:
-        resultados_de_hoy = resultados.pop()
+
+    if resultados and hoy_str in [x['dia'] for x in resultados]:
+        index_to_pop = None
+        for index, r in enumerate(resultados):
+            if r['dia'] == hoy_str:
+                index_to_pop = index
+                break
+        resultados_de_hoy = resultados.pop(index_to_pop)
     else:
         resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
 
@@ -224,9 +234,11 @@ def check_sticker_set(bot, update):
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id)
-        # get_posiciones(bot, update)
-    # else:
-    #     update.message.reply_text('You are safe... for now')
+        if DEBUG:
+            get_posiciones(bot, update)
+    else:
+        if DEBUG:
+            update.message.reply_text('You are safe... for now')
 
 
 def error(bot, update, error):
