@@ -73,6 +73,7 @@ def get_resultados(chat_id):
     else:
         resultados = []
 
+    resultados = _update_resultados(resultados)
     return resultados
 
 
@@ -82,11 +83,10 @@ def save_resultados(resultados, chat_id):
         f.write(json.dumps(resultados))
 
 
-def _update_resultados(chat_id):
+def _update_resultados(resultados):
     """
     Update the resultados for every wednesday already passed since the last one
     """
-    resultados = get_resultados(chat_id)
     now = _get_now()
     hoy_str = now.date().strftime(DATE_FORMAT)
     if not resultados:
@@ -103,7 +103,7 @@ def _update_resultados(chat_id):
             resultados_del_dia = {'dia': dia_str, 'posiciones': {}}
             resultados.insert(0, resultados_del_dia)
             dia += timedelta(days=7)
-        save_resultados(resultados, chat_id)
+    return resultados
 
 
 def _sumar_punto(resultado, username):
@@ -128,7 +128,6 @@ def get_posiciones_generales(bot, update):
       'pedrito': {'stickers_sent': 9, 'days_lost': 4},
     }
     '''
-    _update_resultados(update.message.chat_id)
     resultados = get_resultados(update.effective_chat.id)
     users = {}
     for dia in resultados:
@@ -179,7 +178,6 @@ def get_posiciones_generales(bot, update):
 
 def get_posiciones(bot, update):
     ''' Get posiciones by day '''
-    _update_resultados(update.message.chat_id)
     resultados = get_resultados(update.effective_chat.id)
     message = ''
     for resultado in resultados:
