@@ -65,7 +65,7 @@ def _es_miercoles():
     return DEBUG or now.weekday() == 2
 
 
-def get_resultados(chat_id):
+def get_resultados(chat_id, LIMIT=None):
     file_path = 'resultados-{}.json'.format(chat_id)
     if os.path.isfile(file_path):
         with open(file_path, 'r') as f:
@@ -74,6 +74,8 @@ def get_resultados(chat_id):
         resultados = []
 
     resultados = _update_resultados(resultados)
+    if LIMIT:
+        resultados = resultados[:LIMIT]
     return resultados
 
 
@@ -178,7 +180,7 @@ def get_posiciones_generales(bot, update):
 
 def get_posiciones(bot, update):
     ''' Get posiciones by day '''
-    resultados = get_resultados(update.effective_chat.id)
+    resultados = get_resultados(update.effective_chat.id, LIMIT=5)
     message = ''
     for resultado in resultados:
         # update.message.reply_text(resultado['dia'])
