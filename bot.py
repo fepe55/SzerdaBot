@@ -312,6 +312,19 @@ def get_posiciones(update, context):
     )
 
 
+def show_stickers_de_hoy(update, context):
+    stickers_de_hoy = _get_stickers_de_hoy(update.effective_chat.id)
+    for sticker in stickers_de_hoy:
+        # sticker_to_send = Sticker(
+        #     file_id=sticker['file_id'],
+        #     file_unique_id=sticker['file_unique_id'],
+        #     width=sticker['width'], height=sticker['height'],
+        #     is_animated=sticker['is_animated'],
+        # )
+        sticker_to_send = Sticker(**sticker)
+        context.bot.send_sticker(update.message.chat_id, sticker_to_send)
+
+
 def check_stickers(update, context):
     user = update.message.from_user
     if user.is_bot:
@@ -382,6 +395,7 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(MessageHandler(Filters.sticker, check_stickers))
+    dp.add_handler(CommandHandler('stickers_de_hoy', show_stickers_de_hoy))
     dp.add_handler(CommandHandler('posiciones', get_posiciones))
     dp.add_handler(CommandHandler(
         'posiciones_generales', get_posiciones_generales
