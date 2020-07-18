@@ -41,7 +41,7 @@ ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', 'NickWallowPig']
 # FILE_PATH = 'resultados.json'
 
 
-def _easter_egg(bot, update):
+def _easter_egg(update, context):
     PUG_RECEIVED = 'CAADAgADeQMAAu7EoQobkLnjCnMGDQI'
 
     # PUG_TO_SEND
@@ -51,7 +51,7 @@ def _easter_egg(bot, update):
     STICKER_TO_SEND = Sticker(file_id=file_id, height=height, width=width)
 
     if update.message.sticker.file_id == PUG_RECEIVED:
-        bot.send_sticker(update.message.chat_id, STICKER_TO_SEND)
+        context.bot.send_sticker(update.message.chat_id, STICKER_TO_SEND)
 
 
 def _get_now():
@@ -116,13 +116,13 @@ def _sumar_punto(resultado, username):
     return resultado
 
 
-def get_time(bot, update):
+def get_time(update, context):
     now = _get_now()
     message = now.strftime(DATETIME_FORMAT)
-    bot.send_message(update.message.chat_id, message)
+    context.bot.send_message(update.message.chat_id, message)
 
 
-def get_posiciones_generales(bot, update):
+def get_posiciones_generales(update, context):
     '''
     Get posiciones generales. Days won. Total stickers sent
     users format: {
@@ -173,12 +173,15 @@ def get_posiciones_generales(bot, update):
         message += '{} - {} ({})\n'.format(
             user, data['days_lost'], data['stickers_sent']
         )
-    bot.send_message(
+
+    if not message:
+        message = 'Aún no hay posiciones'
+    context.bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
 
 
-def get_posiciones(bot, update):
+def get_posiciones(update, context):
     ''' Get posiciones by day '''
     resultados = get_resultados(update.effective_chat.id, LIMIT=5)
     message = ''
@@ -200,17 +203,17 @@ def get_posiciones(bot, update):
     # Message as a standalone message
     if not message:
         message = 'Aún no hay posiciones'
-    bot.send_message(
+    context.bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
 
 
-def check_sticker_set(bot, update):
+def check_sticker_set(update, context):
     user = update.message.from_user
     if user.is_bot:
         return
 
-    _easter_egg(bot, update)
+    _easter_egg(update, context)
     if not _es_miercoles():
         return
 
@@ -235,15 +238,15 @@ def check_sticker_set(bot, update):
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id)
         if DEBUG:
-            get_posiciones(bot, update)
+            get_posiciones(update, context)
     else:
         if DEBUG:
             update.message.reply_text('You are safe... for now')
 
 
-def error(bot, update, error):
+def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, error)
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
 def main():
@@ -251,7 +254,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(API_TOKEN)
+    updater = Updater(API_TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
