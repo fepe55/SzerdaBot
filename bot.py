@@ -42,15 +42,20 @@ ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', 'NickWallowPig']
 
 
 def _easter_egg(update, context):
-    PUG_RECEIVED = 'CAADAgADeQMAAu7EoQobkLnjCnMGDQI'
+    # PUG_RECEIVED_FILE_ID = 'CAACAgIAAxkBAAICQF8SWXrp9vpWQiv4HjjuzwdOv51CAAJ5AwAC7sShChuQueMKcwYNGgQ'  # noqa
+    PUG_RECEIVED_UNIQUE_ID = 'AgADeQMAAu7EoQo'
 
     # PUG_TO_SEND
-    file_id = 'CAADAgADBAEAAvR7GQABgBHkQCvGnPsC'
+    file_id = 'CAACAgIAAxkBAAICP18SWNY-NLC_96rFAemzZ0s2nLCVAAIEAQAC9HsZAAGAEeRAK8ac-xoE'  # noqa
+    file_unique_id = 'AgADBAEAAvR7GQAB'
     width = 440
     height = 512
-    STICKER_TO_SEND = Sticker(file_id=file_id, height=height, width=width)
+    STICKER_TO_SEND = Sticker(
+        file_id=file_id, file_unique_id=file_unique_id,
+        width=width, height=height, is_animated=False,
+    )
 
-    if update.message.sticker.file_id == PUG_RECEIVED:
+    if update.message.sticker.file_unique_id == PUG_RECEIVED_UNIQUE_ID:
         context.bot.send_sticker(update.message.chat_id, STICKER_TO_SEND)
 
 
