@@ -70,34 +70,87 @@ def _es_miercoles():
     return DEBUG or now.weekday() == 2
 
 
-def get_resultados(chat_id, LIMIT=None):
-    file_path = 'resultados-{}.json'.format(chat_id)
+def _es_jueves():
+    now = _get_now()
+    return DEBUG or now.weekday() == 3
+
+
+def _get_stickers_de_hoy(chat_id):
+    now = _get_now()
+    now_filename_str = now.strftime('%Y%m%d')
+    file_path = '{}-stickers-{}.json'.format(now_filename_str, chat_id)
+    if not os.path.isfile(file_path):
+        with open(file_path, 'w') as f:
+            f.write(json.dumps([]))
+    with open(file_path, 'r') as f:
+        stickers = json.load(f)
+    return stickers
+    # return [sticker['file_unique_id'] for sticker in stickers]
+
+
+def _update_stickers_de_hoy(chat_id, sticker):
+    now = _get_now()
+    now_filename_str = now.strftime('%Y%m%d')
+    file_path = '{}-stickers-{}.json'.format(now_filename_str, chat_id)
+    stickers_de_hoy = _get_stickers_de_hoy(chat_id)
+    stickers_de_hoy.append({
+        'file_id': sticker.file_id,
+        'file_unique_id': sticker.file_unique_id,
+        'width': sticker.width,
+        'height': sticker.height,
+        'is_animated': sticker.is_animated,
+    })
+    with open(file_path, 'w') as f:
+        f.write(json.dumps(stickers_de_hoy))
+
+
+def _get_resultados_de_hoy(resultados):
+    " Get today's results if they already exist, else we return a new dict "
+    now = _get_now()
+    hoy_str = now.date().strftime(DATE_FORMAT)
+
+    if resultados and hoy_str in [x['dia'] for x in resultados]:
+        index_to_pop = None
+        for index, r in enumerate(resultados):
+            if r['dia'] == hoy_str:
+                index_to_pop = index
+                break
+        resultados_de_hoy = resultados.pop(index_to_pop)
+    else:
+        resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
+
+    return resultados_de_hoy
+
+
+def get_resultados(chat_id, prefix, day_function_check, limit=None):
+    file_path = '{}-resultados-{}.json'.format(prefix, chat_id)
     if os.path.isfile(file_path):
         with open(file_path, 'r') as f:
             resultados = json.load(f)
     else:
         resultados = []
 
-    resultados = _update_resultados(resultados)
-    if LIMIT:
-        resultados = resultados[:LIMIT]
+    resultados = _update_resultados(resultados, day_function_check)
+    if limit:
+        resultados = resultados[:limit]
     return resultados
 
 
-def save_resultados(resultados, chat_id):
-    file_path = 'resultados-{}.json'.format(chat_id)
+def save_resultados(resultados, chat_id, prefix):
+    file_path = '{}-resultados-{}.json'.format(prefix, chat_id)
     with open(file_path, 'w') as f:
         f.write(json.dumps(resultados))
 
 
-def _update_resultados(resultados):
+def _update_resultados(resultados, day_function_check):
     """
-    Update the resultados for every wednesday already passed since the last one
+    Update the resultados for every day already passed since the last one
     """
     now = _get_now()
     hoy_str = now.date().strftime(DATE_FORMAT)
     if not resultados:
-        if _es_miercoles():
+        # if _es_miercoles():
+        if day_function_check():
             resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
             resultados.insert(0, resultados_de_hoy)
     else:
@@ -135,7 +188,8 @@ def get_posiciones_generales(update, context):
       'pedrito': {'stickers_sent': 9, 'days_lost': 4},
     }
     '''
-    resultados = get_resultados(update.effective_chat.id)
+    chat_id = update.effective_chat.id
+    resultados = get_resultados(chat_id, 'szerda', _es_miercoles)
     users = {}
     for dia in resultados:
         posiciones = dia['posiciones']
@@ -188,11 +242,16 @@ def get_posiciones_generales(update, context):
 
 def get_posiciones(update, context):
     ''' Get posiciones by day '''
-    resultados = get_resultados(update.effective_chat.id, LIMIT=5)
-    message = ''
-    for resultado in resultados:
+    chat_id = update.effective_chat.id
+    resultados_szerda = get_resultados(chat_id, 'szerda', _es_miercoles, limit=5)  # noqa
+    resultados_daily = get_resultados(chat_id, 'daily', _es_jueves, limit=5)
+
+    message = '*Posiciones Szerda*:\n'
+    if not resultados_szerda:
+        message += 'Aún no hay posiciones'
+    for resultado in resultados_szerda:
         # update.message.reply_text(resultado['dia'])
-        message += '*{}*\n'.format(resultado['dia'])
+        message += '_{}_\n'.format(resultado['dia'])
         posiciones = resultado['posiciones']
         posiciones = OrderedDict(
             sorted(posiciones.items(), key=lambda x: x[1], reverse=True)
@@ -203,50 +262,78 @@ def get_posiciones(update, context):
             message += 'Nadie mandó no-szerdos\n'
         message += '\n'
 
+    message += '\n*Posiciones Daily*:\n'
+    if not resultados_daily:
+        message += 'Aún no hay posiciones'
+    for resultado in resultados_daily:
+        # update.message.reply_text(resultado['dia'])
+        message += '_{}_\n'.format(resultado['dia'])
+        posiciones = resultado['posiciones']
+        posiciones = OrderedDict(
+            sorted(posiciones.items(), key=lambda x: x[1], reverse=True)
+        )
+        for user, puntos in posiciones.items():
+            message += '{} - {}\n'.format(user, puntos)
+        if not posiciones.items():
+            message += 'Nadie mandó stickers repetidos\n'
+        message += '\n'
+
     # Message as a reply
     # update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
     # Message as a standalone message
-    if not message:
-        message = 'Aún no hay posiciones'
     context.bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
 
 
-def check_sticker_set(update, context):
+def check_stickers(update, context):
     user = update.message.from_user
     if user.is_bot:
         return
-
     _easter_egg(update, context)
-    if not _es_miercoles():
-        return
+    if _es_miercoles():
+        check_sticker_set(update, context)
+    if _es_jueves():
+        check_daily_stickers(update, context)
+    if DEBUG:
+        get_posiciones(update, context)
 
-    now = _get_now()
-    hoy_str = now.date().strftime(DATE_FORMAT)
-    resultados = get_resultados(update.effective_chat.id)
 
-    if resultados and hoy_str in [x['dia'] for x in resultados]:
-        index_to_pop = None
-        for index, r in enumerate(resultados):
-            if r['dia'] == hoy_str:
-                index_to_pop = index
-                break
-        resultados_de_hoy = resultados.pop(index_to_pop)
-    else:
-        resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
+def check_sticker_set(update, context):
+    user = update.message.from_user
+
+    chat_id = update.effective_chat.id
+    resultados = get_resultados(chat_id, 'szerda', _es_miercoles)
+
+    resultados_de_hoy = _get_resultados_de_hoy(resultados)
 
     sticker_set = update.message.sticker.set_name
 
     if sticker_set not in ALLOWED_STICKER_SETS:
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
-        save_resultados(resultados, update.effective_chat.id)
-        if DEBUG:
-            get_posiciones(update, context)
+        save_resultados(resultados, update.effective_chat.id, 'szerda')
+    elif DEBUG:
+        update.message.reply_text('You are szerda safe... for now')
+
+
+def check_daily_stickers(update, context):
+    user = update.message.from_user
+
+    resultados = get_resultados(update.effective_chat.id, 'daily', _es_jueves)
+    resultados_de_hoy = _get_resultados_de_hoy(resultados)
+    stickers_de_hoy = _get_stickers_de_hoy(update.effective_chat.id)
+    stickers_ids = [sticker['file_unique_id'] for sticker in stickers_de_hoy]
+
+    sticker = update.message.sticker
+    if sticker.file_unique_id in stickers_ids:
+        resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
+        resultados.insert(0, resultados_de_hoy)
+        save_resultados(resultados, update.effective_chat.id, 'daily')
     else:
+        _update_stickers_de_hoy(update.effective_chat.id, sticker)
         if DEBUG:
-            update.message.reply_text('You are safe... for now')
+            update.message.reply_text('You are daily safe... for now')
 
 
 def error(update, context):
@@ -264,7 +351,7 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    dp.add_handler(MessageHandler(Filters.sticker, check_sticker_set))
+    dp.add_handler(MessageHandler(Filters.sticker, check_stickers))
     dp.add_handler(CommandHandler('posiciones', get_posiciones))
     dp.add_handler(CommandHandler(
         'posiciones_generales', get_posiciones_generales
