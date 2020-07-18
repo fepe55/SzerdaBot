@@ -52,9 +52,9 @@ def _es_miercoles():
     return DEBUG or now.weekday() == 2
 
 
-def _es_jueves():
+def _es_lunes():
     now = _get_now()
-    return DEBUG or now.weekday() == 3
+    return DEBUG or now.weekday() == 0
 
 
 class Game:
@@ -72,7 +72,7 @@ class Game:
 
 
 SZERDA_GAME = Game('szerda', _es_miercoles)
-DAILY_GAME = Game('daily', _es_jueves)
+DAILY_GAME = Game('daily', _es_lunes)
 
 
 def _easter_egg(update, context):
@@ -334,7 +334,7 @@ def check_stickers(update, context):
     _easter_egg(update, context)
     if _es_miercoles():
         check_sticker_set(update, context)
-    if _es_jueves():
+    if _es_lunes():
         check_daily_stickers(update, context)
     if DEBUG:
         get_posiciones(update, context)
