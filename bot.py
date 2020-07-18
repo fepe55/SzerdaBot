@@ -58,15 +58,17 @@ def _es_jueves():
 
 
 class Game:
-    def __init__(self, prefix, day_function_check):
-        self.prefix = prefix
-        self.day_function_check = day_function_check
+    def __init__(self, prefix, validity_function_check):
+        self._prefix = prefix
+        self._validity_function_check = validity_function_check
 
-    def get_prefix(self):
-        return self.prefix
+    @property
+    def prefix(self):
+        return self._prefix
 
-    def get_day_function_check(self):
-        return self.day_function_check
+    @property
+    def validity_function_check(self):
+        return self._validity_function_check
 
 
 SZERDA_GAME = Game('szerda', _es_miercoles)
@@ -139,7 +141,7 @@ def _get_resultados_de_hoy(resultados):
 
 
 def get_resultados(chat_id, game, limit=None):
-    file_path = '{}-resultados-{}.json'.format(game.get_prefix(), chat_id)
+    file_path = '{}-resultados-{}.json'.format(game.prefix, chat_id)
     if os.path.isfile(file_path):
         with open(file_path, 'r') as f:
             resultados = json.load(f)
@@ -153,7 +155,7 @@ def get_resultados(chat_id, game, limit=None):
 
 
 def save_resultados(resultados, chat_id, game):
-    file_path = '{}-resultados-{}.json'.format(game.get_prefix(), chat_id)
+    file_path = '{}-resultados-{}.json'.format(game.prefix, chat_id)
     with open(file_path, 'w') as f:
         f.write(json.dumps(resultados))
 
@@ -166,7 +168,7 @@ def _update_resultados(resultados, game):
     hoy_str = now.date().strftime(DATE_FORMAT)
     if not resultados:
         # if _es_miercoles():
-        if game.get_day_function_check()():
+        if game.validity_function_check():
             resultados_de_hoy = {'dia': hoy_str, 'posiciones': {}}
             resultados.insert(0, resultados_de_hoy)
     else:
@@ -372,7 +374,7 @@ def check_daily_stickers(update, context):
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id, DAILY_GAME)
         if DEBUG:
-            update.message.reply_text('REPETEAD STICKER, GOT YA!')
+            update.message.reply_text('REPEATED STICKER, GOT YA!')
     else:
         _update_stickers_de_hoy(update.effective_chat.id, sticker)
         if DEBUG:
