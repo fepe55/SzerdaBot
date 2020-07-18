@@ -181,6 +181,22 @@ def get_time(update, context):
 
 
 def get_posiciones_generales(update, context):
+    message = '*Posiciones Szerda*:\n'
+    message += _get_posiciones_generales_msg(
+        update, context, 'szerda', _es_miercoles
+    )
+
+    message += '\n*Posiciones Daily*:\n'
+    message += _get_posiciones_generales_msg(
+        update, context, 'daily', _es_jueves
+    )
+
+    context.bot.send_message(
+        update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
+    )
+
+
+def _get_posiciones_generales_msg(update, context, prefix, day_function_check):
     '''
     Get posiciones generales. Days won. Total stickers sent
     users format: {
@@ -189,7 +205,7 @@ def get_posiciones_generales(update, context):
     }
     '''
     chat_id = update.effective_chat.id
-    resultados = get_resultados(chat_id, 'szerda', _es_miercoles)
+    resultados = get_resultados(chat_id, prefix, day_function_check)
     users = {}
     for dia in resultados:
         posiciones = dia['posiciones']
@@ -205,7 +221,7 @@ def get_posiciones_generales(update, context):
         # Empty day
         if not posiciones:
             continue
-        # Only one user sent the wrong stickers
+        # Only one user "scored"
         if len(posiciones) == 1:
             user, stickers_sent = list(posiciones.items())[0]
             users[user]['days_lost'] += 1
@@ -235,9 +251,7 @@ def get_posiciones_generales(update, context):
 
     if not message:
         message = 'Aún no hay posiciones'
-    context.bot.send_message(
-        update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
-    )
+    return message
 
 
 def get_posiciones(update, context):
