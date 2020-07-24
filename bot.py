@@ -199,22 +199,18 @@ def get_time(update, context):
 
 
 def get_posiciones_generales(update, context):
-    chat_id = update.effective_chat.id
-
-    _update_file(chat_id, SZERDA_GAME)
     message = '*Posiciones Szerda*:\n'
-    message += _get_posiciones_generales_msg(chat_id, context, SZERDA_GAME)
+    message += _get_posiciones_generales_msg(update, context, SZERDA_GAME)
 
-    _update_file(chat_id, DAILY_GAME)
     message += '\n*Posiciones Daily*:\n'
-    message += _get_posiciones_generales_msg(chat_id, context, DAILY_GAME)
+    message += _get_posiciones_generales_msg(update, context, DAILY_GAME)
 
     context.bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
 
 
-def _get_posiciones_generales_msg(chat_id, context, game):
+def _get_posiciones_generales_msg(update, context, game):
     '''
     Get posiciones generales. Days won. Total stickers sent
     users format: {
@@ -222,6 +218,7 @@ def _get_posiciones_generales_msg(chat_id, context, game):
       'pedrito': {'stickers_sent': 9, 'days_lost': 4},
     }
     '''
+    chat_id = update.effective_chat.id
     resultados = get_resultados(chat_id, game)
     users = {}
     for dia in resultados:
@@ -274,10 +271,6 @@ def _get_posiciones_generales_msg(chat_id, context, game):
 def get_posiciones(update, context):
     ''' Get posiciones by day '''
     chat_id = update.effective_chat.id
-
-    _update_file(chat_id, SZERDA_GAME)
-    _update_file(chat_id, DAILY_GAME)
-
     resultados_szerda = get_resultados(chat_id, SZERDA_GAME, limit=5)
     resultados_daily = get_resultados(chat_id, DAILY_GAME, limit=5)
 
@@ -386,11 +379,6 @@ def check_daily_stickers(update, context):
         _update_stickers_de_hoy(update.effective_chat.id, sticker)
         if DEBUG:
             update.message.reply_text('You are daily safe... for now')
-
-
-def _update_file(chat_id, game):
-    resultados = get_resultados(chat_id, game)
-    save_resultados(resultados, chat_id, game)
 
 
 def error(update, context):
