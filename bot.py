@@ -339,11 +339,15 @@ def check_stickers(update, context):
     if user.is_bot:
         return
     _easter_egg(update, context)
+
     if _es_miercoles():
         check_sticker_set(update, context)
     if _es_lunes():
         check_daily_stickers(update, context)
     if DEBUG:
+        sticker_set = update.message.sticker.set_name
+        msg = f'This sticker belongs to the sticker set {sticker_set}'
+        update.message.reply_text(msg)
         get_posiciones(update, context)
 
 
