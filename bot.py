@@ -346,7 +346,7 @@ def check_stickers(update, context):
         check_daily_stickers(update, context)
     if DEBUG:
         sticker_set = update.message.sticker.set_name
-        msg = f'This sticker belongs to the sticker set {sticker_set}'
+        msg = 'This sticker belongs to the sticker set {}'.format(sticker_set)
         update.message.reply_text(msg)
         get_posiciones(update, context)
 
