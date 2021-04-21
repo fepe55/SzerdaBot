@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 API_TOKEN = os.getenv('API_TOKEN')
 DEBUG = os.getenv('SZERDA_DEBUG', False)
 
-ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', 'NickWallowPig']
+ALLOWED_STICKER_SETS = ['Piggy2019', 'vinki', 'NickWallowPig', 'waddles_pig']
 # FILE_PATH = 'resultados.json'
 
 
