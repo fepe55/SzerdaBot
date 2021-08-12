@@ -47,14 +47,19 @@ def _get_now():
     return now
 
 
+def _es_lunes():
+    now = _get_now()
+    return DEBUG or now.weekday() == 0
+
+
 def _es_miercoles():
     now = _get_now()
     return DEBUG or now.weekday() == 2
 
 
-def _es_lunes():
+def _es_viernes():
     now = _get_now()
-    return DEBUG or now.weekday() == 0
+    return DEBUG or now.weekday() == 4
 
 
 class Game:
@@ -73,6 +78,7 @@ class Game:
 
 SZERDA_GAME = Game('szerda', _es_miercoles)
 DAILY_GAME = Game('daily', _es_lunes)
+VIERNES_GAME = Game('viernes', _es_viernes)
 
 
 def _easter_egg(update, context):
@@ -209,6 +215,10 @@ def get_posiciones_generales(update, context):
     message += '\n*Posiciones Daily*:\n'
     message += _get_posiciones_generales_msg(chat_id, context, DAILY_GAME)
 
+    _update_file(chat_id, VIERNES_GAME)
+    message += '\n*Posiciones Viernes*:\n'
+    message += _get_posiciones_generales_msg(chat_id, context, VIERNES_GAME)
+
     context.bot.send_message(
         update.message.chat_id, message, parse_mode=ParseMode.MARKDOWN
     )
@@ -277,9 +287,11 @@ def get_posiciones(update, context):
 
     _update_file(chat_id, SZERDA_GAME)
     _update_file(chat_id, DAILY_GAME)
+    _update_file(chat_id, VIERNES_GAME)
 
     resultados_szerda = get_resultados(chat_id, SZERDA_GAME, limit=5)
     resultados_daily = get_resultados(chat_id, DAILY_GAME, limit=5)
+    resultados_viernes = get_resultados(chat_id, VIERNES_GAME, limit=5)
 
     message = '*Posiciones Szerda*:\n'
     if not resultados_szerda:
@@ -313,6 +325,23 @@ def get_posiciones(update, context):
             message += 'Nadie mandó stickers repetidos\n'
         message += '\n'
 
+    message += '\n*Posiciones Viernes*:\n'
+    if not resultados_viernes:
+        message += 'Aún no hay posiciones'
+
+    for resultado in resultados_viernes:
+        # update.message.reply_text(resultado['dia'])
+        message += '_{}_\n'.format(resultado['dia'])
+        posiciones = resultado['posiciones']
+        posiciones = OrderedDict(
+            sorted(posiciones.items(), key=lambda x: x[1], reverse=True)
+        )
+        for user, puntos in posiciones.items():
+            message += '{} - {}\n'.format(user, puntos)
+        if not posiciones.items():
+            message += 'Nadie mandó stickers viernes\n'
+        message += '\n'
+
     # Message as a reply
     # update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
     # Message as a standalone message
@@ -340,15 +369,39 @@ def check_stickers(update, context):
         return
     _easter_egg(update, context)
 
-    if _es_miercoles():
-        check_sticker_set(update, context)
     if _es_lunes():
         check_daily_stickers(update, context)
+    if _es_miercoles():
+        check_sticker_set(update, context)
+    if _es_viernes():
+        check_viernes_stickers(update, context)
+
     if DEBUG:
         sticker_set = update.message.sticker.set_name
         msg = 'This sticker belongs to the sticker set {}'.format(sticker_set)
         update.message.reply_text(msg)
         get_posiciones(update, context)
+
+
+def check_daily_stickers(update, context):
+    user = update.message.from_user
+
+    resultados = get_resultados(update.effective_chat.id, DAILY_GAME)
+    resultados_de_hoy = _get_resultados_de_hoy(resultados)
+    stickers_de_hoy = _get_stickers_de_hoy(update.effective_chat.id)
+    stickers_ids = [sticker['file_unique_id'] for sticker in stickers_de_hoy]
+
+    sticker = update.message.sticker
+    if sticker.file_unique_id in stickers_ids:
+        resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
+        resultados.insert(0, resultados_de_hoy)
+        save_resultados(resultados, update.effective_chat.id, DAILY_GAME)
+        if DEBUG:
+            update.message.reply_text('REPEATED STICKER, GOT YA!')
+    else:
+        _update_stickers_de_hoy(update.effective_chat.id, sticker)
+        if DEBUG:
+            update.message.reply_text('You are daily safe... for now')
 
 
 def check_sticker_set(update, context):
@@ -371,25 +424,24 @@ def check_sticker_set(update, context):
         update.message.reply_text('You are szerda safe... for now')
 
 
-def check_daily_stickers(update, context):
+def check_viernes_stickers(update, context):
     user = update.message.from_user
 
-    resultados = get_resultados(update.effective_chat.id, DAILY_GAME)
-    resultados_de_hoy = _get_resultados_de_hoy(resultados)
-    stickers_de_hoy = _get_stickers_de_hoy(update.effective_chat.id)
-    stickers_ids = [sticker['file_unique_id'] for sticker in stickers_de_hoy]
+    chat_id = update.effective_chat.id
+    resultados = get_resultados(chat_id, VIERNES_GAME)
 
-    sticker = update.message.sticker
-    if sticker.file_unique_id in stickers_ids:
+    resultados_de_hoy = _get_resultados_de_hoy(resultados)
+
+    sticker_set = update.message.sticker.set_name
+
+    if sticker_set not in ALLOWED_STICKER_SETS:
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
-        save_resultados(resultados, update.effective_chat.id, DAILY_GAME)
+        save_resultados(resultados, update.effective_chat.id, VIERNES_GAME)
         if DEBUG:
-            update.message.reply_text('REPEATED STICKER, GOT YA!')
-    else:
-        _update_stickers_de_hoy(update.effective_chat.id, sticker)
-        if DEBUG:
-            update.message.reply_text('You are daily safe... for now')
+            update.message.reply_text('NON-VIERNES, GOT YA!')
+    elif DEBUG:
+        update.message.reply_text('You are viernes safe... for now')
 
 
 def _update_file(chat_id, game):
