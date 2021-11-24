@@ -367,7 +367,7 @@ def check_sticker_set(update, context):
 
     sticker_set = update.message.sticker.set_name
 
-    if sticker_set not in ALLOWED_STICKER_SETS:
+    if sticker_set and sticker_set not in ALLOWED_STICKER_SETS:
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id, SZERDA_GAME)
@@ -386,7 +386,8 @@ def check_daily_stickers(update, context):
     stickers_ids = [sticker['file_unique_id'] for sticker in stickers_de_hoy]
 
     sticker = update.message.sticker
-    if sticker.file_unique_id in stickers_ids:
+
+    if sticker.set_name and sticker.file_unique_id in stickers_ids:
         resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id, DAILY_GAME)
