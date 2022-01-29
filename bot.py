@@ -59,14 +59,16 @@ def _get_now():
     return now
 
 
-def _es_miercoles():
-    now = _get_now()
-    return DEBUG or now.weekday() == 2
+def _es_miercoles(dt: datetime = None):
+    if not dt:
+        dt = _get_now()
+    return DEBUG or dt.weekday() == 2
 
 
-def _es_lunes():
-    now = _get_now()
-    return DEBUG or now.weekday() == 0
+def _es_lunes(dt: datetime = None):
+    if not dt:
+        dt = _get_now()
+    return DEBUG or dt.weekday() == 0
 
 
 class Game:
@@ -85,7 +87,7 @@ class Game:
 
 SZERDA_GAME = Game('szerda', _es_miercoles)
 DAILY_GAME = Game('daily', _es_lunes)
-WORDLE_GAME = Game('wordle', lambda: True)
+WORDLE_GAME = Game('wordle', lambda _=None: True)
 
 
 def _easter_egg(update, context):
@@ -187,21 +189,23 @@ def _update_resultados(resultados, game):
     else:
         ultimo_resultados = resultados[0]
         ultimo_dia_str = ultimo_resultados['dia']
-        ultimo_dia = datetime.strptime(ultimo_dia_str, DATE_FORMAT).date()
-        dia = ultimo_dia + timedelta(days=7)
-        while dia <= now.date():
-            dia_str = dia.strftime(DATE_FORMAT)
-            resultados_del_dia = {'dia': dia_str, 'posiciones': {}}
-            resultados.insert(0, resultados_del_dia)
-            dia += timedelta(days=7)
+        ultimo_dia = datetime.strptime(ultimo_dia_str, DATE_FORMAT)
+        dia = ultimo_dia + timedelta(days=1)
+        while dia.date() <= now.date():
+            if game.validity_function_check(dia):
+                dia_str = dia.date().strftime(DATE_FORMAT)
+                resultados_del_dia = {'dia': dia_str, 'posiciones': {}}
+                resultados.insert(0, resultados_del_dia)
+            dia += timedelta(days=1)
     return resultados
 
 
-def _sumar_punto(resultado, username):
+def _sumar_puntos(resultado, username, puntos):
+    puntos = int(puntos)
     if username in resultado['posiciones'].keys():
-        resultado['posiciones'][username] += 1
+        resultado['posiciones'][username] += puntos
     else:
-        resultado['posiciones'][username] = 1
+        resultado['posiciones'][username] = puntos
     return resultado
 
 
@@ -229,22 +233,22 @@ def get_posiciones_generales(update, context):
 
 def _get_posiciones_generales_msg(chat_id, context, game):
     '''
-    Get posiciones generales. Days won. Total stickers sent
+    Get posiciones generales. Days won. Total points (stickers sent)
     users format: {
-      'juancito': {'stickers_sent': 99, 'days_lost': 2},
-      'pedrito': {'stickers_sent': 9, 'days_lost': 4},
+      'juancito': {'points': 99, 'days_lost': 2},
+      'pedrito': {'points': 9, 'days_lost': 4},
     }
     '''
     resultados = get_resultados(chat_id, game)
     users = {}
     for dia in resultados:
         posiciones = dia['posiciones']
-        for user, stickers_sent in posiciones.items():
+        for user, points in posiciones.items():
             if user in users.keys():
-                users[user]['stickers_sent'] += stickers_sent
+                users[user]['points'] += points
             else:
                 users[user] = {
-                    'stickers_sent': stickers_sent,
+                    'points': points,
                     'days_lost': 0
                 }
 
@@ -253,30 +257,30 @@ def _get_posiciones_generales_msg(chat_id, context, game):
             continue
         # Only one user "scored"
         if len(posiciones) == 1:
-            user, stickers_sent = list(posiciones.items())[0]
+            user, points = list(posiciones.items())[0]
             users[user]['days_lost'] += 1
-        # More than one user
+        # Two users
         else:
             posiciones_sorted = sorted(
                 posiciones.items(), key=lambda x: x[1], reverse=True
             )
-            first, f_stickers_sent = posiciones_sorted[0]
-            second, s_stickers_sent = posiciones_sorted[1]
+            first, f_points = posiciones_sorted[0]
+            second, s_points = posiciones_sorted[1]
             # If the first and second one have the same number of stickers
             # sent, then it's a draw. No loser
-            if f_stickers_sent > s_stickers_sent:
+            if f_points > s_points:
                 users[first]['days_lost'] += 1
 
     message = ''
     users = OrderedDict(
         sorted(
             users.items(), reverse=True,
-            key=lambda x: (x[1]['days_lost'], x[1]['stickers_sent'])
+            key=lambda x: (x[1]['days_lost'], x[1]['points'])
         )
     )
     for user, data in users.items():
         message += '{} - {} ({})\n'.format(
-            user, data['days_lost'], data['stickers_sent']
+            user, data['days_lost'], data['points']
         )
 
     if not message:
@@ -290,9 +294,11 @@ def get_posiciones(update, context):
 
     _update_file(chat_id, SZERDA_GAME)
     _update_file(chat_id, DAILY_GAME)
+    _update_file(chat_id, WORDLE_GAME)
 
     resultados_szerda = get_resultados(chat_id, SZERDA_GAME, limit=5)
     resultados_daily = get_resultados(chat_id, DAILY_GAME, limit=5)
+    resultados_wordle = get_resultados(chat_id, WORDLE_GAME, limit=5)
 
     message = '*Posiciones Szerda*:\n'
     if not resultados_szerda:
@@ -326,6 +332,22 @@ def get_posiciones(update, context):
             message += 'Nadie mandó stickers repetidos\n'
         message += '\n'
 
+    message += '\n*Posiciones Wordle*:\n'
+    if not resultados_wordle:
+        message += 'Aún no hay posiciones'
+    for resultado in resultados_wordle:
+        # update.message.reply_text(resultado['dia'])
+        message += '_{}_\n'.format(resultado['dia'])
+        posiciones = resultado['posiciones']
+        posiciones = OrderedDict(
+            sorted(posiciones.items(), key=lambda x: x[1], reverse=True)
+        )
+        for user, puntos in posiciones.items():
+            message += '{} - {}\n'.format(user, puntos)
+        if not posiciones.items():
+            message += 'Nadie jugó Wordle\n'
+        message += '\n'
+
     # Message as a reply
     # update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
     # Message as a standalone message
@@ -356,6 +378,10 @@ def check_texts(update: Update, context: CallbackContext):
         return
     user = update.message.from_user
     message = update.message.text
+    chat_id = update.effective_chat.id
+
+    resultados = get_resultados(chat_id, WORDLE_GAME)
+    resultados_de_hoy = _get_resultados_de_hoy(resultados)
 
     result = WORDLE_REGEX.match(message)
     if result and len(result.groups()) == 2:
@@ -364,7 +390,18 @@ def check_texts(update: Update, context: CallbackContext):
             f'Es un wordle correcto {user.username}, es el número {wordle_id}'
             f' y tu score fue de {score} sobre 6'
         )
-        update.message.reply_text(msg, quote=True)
+
+        if user.username in resultados_de_hoy['posiciones'].keys():
+            msg = 'Ya jugaste este día 🤔'
+            update.message.reply_text(msg, quote=True)
+        else:
+            resultados_de_hoy = _sumar_puntos(
+                resultados_de_hoy, user.username, score
+            )
+            resultados.insert(0, resultados_de_hoy)
+            save_resultados(resultados, update.effective_chat.id, WORDLE_GAME)
+
+            update.message.reply_text(msg, quote=True)
     else:
         if DEBUG:
             if not result:
@@ -403,7 +440,7 @@ def check_sticker_set(update, context):
     sticker_set = update.message.sticker.set_name
 
     if sticker_set and sticker_set not in ALLOWED_STICKER_SETS:
-        resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
+        resultados_de_hoy = _sumar_puntos(resultados_de_hoy, user.username, 1)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id, SZERDA_GAME)
         if DEBUG:
@@ -423,7 +460,7 @@ def check_daily_stickers(update, context):
     sticker = update.message.sticker
 
     if sticker.set_name and sticker.file_unique_id in stickers_ids:
-        resultados_de_hoy = _sumar_punto(resultados_de_hoy, user.username)
+        resultados_de_hoy = _sumar_puntos(resultados_de_hoy, user.username, 1)
         resultados.insert(0, resultados_de_hoy)
         save_resultados(resultados, update.effective_chat.id, DAILY_GAME)
         if DEBUG:
