@@ -1,4 +1,5 @@
 import os
+import re
 import pytz
 import json
 import locale
@@ -8,8 +9,10 @@ from collections import OrderedDict
 
 from dotenv import load_dotenv
 
-from telegram import Sticker
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import Sticker, Update
+from telegram.ext import (
+    Updater, CommandHandler, MessageHandler, Filters, CallbackContext,
+)
 from telegram.parsemode import ParseMode
 
 '''
@@ -25,6 +28,9 @@ load_dotenv()
 locale.setlocale(locale.LC_ALL, 'es_AR.UTF-8')
 DATE_FORMAT = '%d/%m/%Y'
 DATETIME_FORMAT = '%A %d/%m/%Y %H:%M:%S'
+# Example: 'Wordle (ES) #22 3/6'
+WORDLE_PATTERN = r'Wordle \(ES\) #(\d+) (\d)\/6'
+WORDLE_REGEX = re.compile(WORDLE_PATTERN)
 
 # Enable logging
 logging.basicConfig(
@@ -79,6 +85,7 @@ class Game:
 
 SZERDA_GAME = Game('szerda', _es_miercoles)
 DAILY_GAME = Game('daily', _es_lunes)
+WORDLE_GAME = Game('wordle', lambda: True)
 
 
 def _easter_egg(update, context):
@@ -340,6 +347,34 @@ def show_stickers_de_hoy(update, context):
         context.bot.send_sticker(update.message.chat_id, sticker_to_send)
 
 
+def check_texts(update: Update, context: CallbackContext):
+    # We ignore edited messages for now
+    if not hasattr(update, 'message') or not update.message:
+        return
+    user = update.message.from_user
+    if user.is_bot:
+        return
+    user = update.message.from_user
+    message = update.message.text
+
+    result = WORDLE_REGEX.match(message)
+    if result and len(result.groups()) == 2:
+        (wordle_id, score) = result.groups()
+        msg = (
+            f'Es un wordle correcto {user.username}, es el número {wordle_id}'
+            f' y tu score fue de {score} sobre 6'
+        )
+        update.message.reply_text(msg, quote=True)
+    else:
+        if DEBUG:
+            if not result:
+                msg = 'No cumple el pattern de Wordle'
+            else:
+                groups = len(result.groups())
+                msg = f'Cumple el pattern, pero hay {groups} groups. Raro'
+            update.message.reply_text(msg)
+
+
 def check_stickers(update, context):
     user = update.message.from_user
     if user.is_bot:
@@ -419,13 +454,14 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    dp.add_handler(MessageHandler(Filters.sticker, check_stickers))
     dp.add_handler(CommandHandler('stickers_de_hoy', show_stickers_de_hoy))
     dp.add_handler(CommandHandler('posiciones', get_posiciones))
     dp.add_handler(CommandHandler(
         'posiciones_generales', get_posiciones_generales
     ))
     dp.add_handler(CommandHandler('time', get_time))
+    dp.add_handler(MessageHandler(Filters.sticker, check_stickers))
+    dp.add_handler(MessageHandler(Filters.text, check_texts))
 
     # log all errors
     dp.add_error_handler(error)
