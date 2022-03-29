@@ -29,7 +29,10 @@ locale.setlocale(locale.LC_ALL, 'es_AR.UTF-8')
 DATE_FORMAT = '%d/%m/%Y'
 DATETIME_FORMAT = '%A %d/%m/%Y %H:%M:%S'
 # Example: 'Wordle (ES) #22 3/6'
-WORDLE_PATTERN = r'Wordle \(ES\) #(\d+) (\d)\/6'
+# Example: 'Wordle (ES)  #82 5/6'
+# WORDLE_PATTERN = r'Wordle \(ES\) #(\d+) (\d)\/6'
+# Added a bunch of (?: )+ in case the author adds more spaces
+WORDLE_PATTERN = r'Wordle(?: )+\(ES\)(?: )+#(\d+)(?: )+(\d)\/6'
 WORDLE_REGEX = re.compile(WORDLE_PATTERN)
 
 # Enable logging
