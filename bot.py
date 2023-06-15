@@ -28,12 +28,13 @@ load_dotenv()
 locale.setlocale(locale.LC_ALL, 'es_AR.UTF-8')
 DATE_FORMAT = '%d/%m/%Y'
 DATETIME_FORMAT = '%A %d/%m/%Y %H:%M:%S'
-# Example: 'Wordle (ES) #22 3/6'
-# Example: 'Wordle (ES)  #82 5/6'
+# Old example: 'Wordle (ES) #22 3/6'
+# Old example: 'Wordle (ES)  #82 5/6'
 # WORDLE_PATTERN = r'Wordle \(ES\) #(\d+) (\d)\/6'
 # Added a bunch of (?: )+ in case the author adds more spaces
 # WORDLE_PATTERN = r'La palabra del día(?: )+#(\d+)(?: )+(\d)\/6'
 # Make it more generic, just search #numbers number/6
+# New example: 'La palabra del día #525 4/6'
 WORDLE_PATTERN = r'(?:.*)#(\d+)(?: )+(\d)\/6'
 WORDLE_REGEX = re.compile(WORDLE_PATTERN)
 
