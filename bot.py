@@ -299,9 +299,9 @@ def get_posiciones(update, context):
     _update_file(chat_id, DAILY_GAME)
     _update_file(chat_id, WORDLE_GAME)
 
-    resultados_szerda = get_resultados(chat_id, SZERDA_GAME, limit=5)
-    resultados_daily = get_resultados(chat_id, DAILY_GAME, limit=5)
-    resultados_wordle = get_resultados(chat_id, WORDLE_GAME, limit=5)
+    resultados_szerda = get_resultados(chat_id, SZERDA_GAME, limit=3)
+    resultados_daily = get_resultados(chat_id, DAILY_GAME, limit=3)
+    resultados_wordle = get_resultados(chat_id, WORDLE_GAME, limit=3)
 
     message = '*Posiciones Szerda*:\n'
     if not resultados_szerda:
